@@ -1,0 +1,147 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String           @id @default(uuid())
+  email            String           @unique
+  passwordHash     String
+  role             String           @default("CLIENT") // CLIENT | ADMIN
+  totpSecret       String?
+  totpEnabled      Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  
+  store            UserStore?
+  botAccess        BotClientAccess[]
+  messages         ChatMessage[]
+}
+
+model UserStore {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileSearchStoreName String   @unique
+  createdAt          DateTime @default(now())
+}
+
+model Bot {
+  id                  String            @id @default(uuid())
+  name                String
+  description         String?
+  systemInstruction   String
+  fileSearchStoreName String?
+  modelName           String            @default("gemini-2.5-flash")
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  
+  clientAccess        BotClientAccess[]
+  messages            ChatMessage[]
+}
+
+model BotClientAccess {
+  id        String   @id @default(uuid())
+  userId    String
+  botId     String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, botId])
+}
+
+model ChatMessage {
+  id                String   @id @default(uuid())
+  userId            String
+  botId             String
+  role              String   // 'user' | 'model' | 'system'
+  content           String
+  groundingMetadata String?  // JSON stringified source references
+  createdAt         DateTime @default(now())
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bot               Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+}
+
+model ChatSummary {
+  id        String   @id @default(uuid())
+  userId    String
+  botId     String
+  summary   String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, botId])
+}
+
+model ApiKey {
+  id           String   @id @default(uuid())
+  service      String   // e.g. 'GEMINI'
+  encryptedKey String
+  iv           String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SystemSettings {
+  id                      String   @id @default("default")
+  slidingWindowSize       Int      @default(15)
+  summarizationEnabled    Boolean  @default(true)
+  summarizationThreshold  Int      @default(30)
+  rateLimitPerMinute      Int      @default(20)
+  rateLimitPerDay         Int      @default(500)
+  clientRagQuotaMB        Int      @default(500) // Лимит RAG-памяти клиента в мегабайтах (MB)
+  dualRagPrompt           String?  // Эталонный шаблон промпта Dual-RAG иерархии (редактируемый из админки)
+  updatedAt               DateTime @updatedAt
+}
+
+model VerifiedModel {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  label     String?
+  latencyMs Int?
+  createdAt DateTime @default(now())
+}
+
+model ApiDiagnostics {
+  id               String   @id @default(uuid())
+  userId           String?
+  botId            String?
+  endpoint         String
+  status           String   // 'SUCCESS' | 'ERROR'
+  errorMessage     String?
+  responseTime     Int      // ms total
+  modelName        String?  // which Gemini model was used
+  finishReason     String?  // Gemini finishReason (STOP, MAX_TOKENS, SAFETY, etc)
+  fileSearchUsed   Boolean? // was fileSearch tool active for this request
+  ragMode          String?  // 'NONE' | 'BOT_ONLY' | 'CLIENT_ONLY' | 'DUAL_RAG'
+  retrievalTimeMs  Int?     // time spent in RAG retrieval
+  generationTimeMs Int?     // time spent in text generation
+  queryLength      Int?     // character length of user query
+  createdAt        DateTime @default(now())
+}
+
+model ThemeToken {
+  id          String   @id @default(uuid())
+  tokenName   String   @unique
+  value       String
+  category    String   @default("color") // "color" | "typography" | "spacing"
+  editable    Boolean  @default(true)
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model UserFileTag {
+  id           String   @id @default(uuid())
+  userId       String
+  documentName String
+  folderTag    String
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, documentName])
+}
