@@ -1339,8 +1339,47 @@ app.get('/api/admin/rag-stats', authenticateToken, requireAdmin, async (req, res
   }
 });
 
+async function ensureDefaultUsers() {
+  try {
+    const adminPasswordHash = await bcrypt.hash('admin123', 10);
+    await prisma.user.upsert({
+      where: { email: 'admin@krb.ai' },
+      update: { passwordHash: adminPasswordHash, role: 'ADMIN' },
+      create: { email: 'admin@krb.ai', passwordHash: adminPasswordHash, role: 'ADMIN' }
+    });
+
+    const clientPasswordHash = await bcrypt.hash('client123', 10);
+    await prisma.user.upsert({
+      where: { email: 'client@krb.ai' },
+      update: { passwordHash: clientPasswordHash, role: 'CLIENT' },
+      create: { email: 'client@krb.ai', passwordHash: clientPasswordHash, role: 'CLIENT' }
+    });
+
+    const existingBot = await prisma.bot.findFirst();
+    if (!existingBot) {
+      try {
+        const storeName = await ensureFileSearchStore(`bot_store_${Date.now()}`);
+        await prisma.bot.create({
+          data: {
+            name: 'Маркетолог',
+            description: 'Эксперт по стратегическому маркетингу и анализу ниши',
+            systemInstruction: 'Вы — эксперт-маркетолог компании KRB.',
+            fileSearchStoreName: storeName
+          }
+        });
+      } catch (botErr) {
+        console.warn('Could not create default bot Store:', botErr);
+      }
+    }
+    console.log('✅ Default users & bot guaranteed in DB');
+  } catch (err) {
+    console.error('Failed to ensure default users:', err);
+  }
+}
+
 const portNum = Number(PORT) || 5001;
-app.listen(portNum, '0.0.0.0', () => {
+app.listen(portNum, '0.0.0.0', async () => {
   logInfo(`Сервер запущен на 0.0.0.0:${portNum} [Уровень: ${getSystemLogLevel()}]`);
   console.log(`Server listening on 0.0.0.0:${portNum}`);
+  await ensureDefaultUsers();
 });
