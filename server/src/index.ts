@@ -725,6 +725,26 @@ app.post('/api/admin/keys', authenticateToken, requireAdmin, async (req, res) =>
       isActive: true
     }
   });
+
+  // Trigger background store auto-healing for all existing bots upon new API key addition
+  (async () => {
+    try {
+      const bots = await prisma.bot.findMany();
+      for (const bot of bots) {
+        if (!bot.fileSearchStoreName) {
+          const expectedStoreDisplayName = bot.name === 'Маркетолог' ? 'bot_marketing_expert' : `bot_store_${bot.id}`;
+          const storeName = await ensureFileSearchStore(expectedStoreDisplayName);
+          await prisma.bot.update({
+            where: { id: bot.id },
+            data: { fileSearchStoreName: storeName }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[API Key Seed Auto-Heal Warning]', e);
+    }
+  })();
+
   res.json({ id: created.id, service: created.service, isActive: created.isActive });
 });
 
@@ -833,8 +853,8 @@ app.get('/api/admin/bots', authenticateToken, requireAdmin, async (req, res) => 
               data: { fileSearchStoreName: storeName }
             });
             bot.fileSearchStoreName = storeName;
-          } catch (e) {
-            console.warn(`[RAG Auto-Heal Defer] API Key not set or failed to link store for bot ${bot.id}`);
+          } catch (e: any) {
+            console.warn(`[RAG Auto-Heal Defer] API Key not set or failed to link store for bot ${bot.id}:`, e?.message || e);
             return bot;
           }
         }
