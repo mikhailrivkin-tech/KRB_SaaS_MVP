@@ -1729,9 +1729,34 @@ export function AppContent() {
                                     <FileText size={14} className="text-primary-600 dark:text-primary-400 shrink-0" />
                                     <span className="font-medium text-[var(--color-text)] truncate">{file.fileName}</span>
                                   </div>
-                                  <span className="text-[10px] text-[var(--color-text-tertiary)] font-mono shrink-0">
-                                    {file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Google RAG'}
-                                  </span>
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    <span className="text-[10px] text-[var(--color-text-tertiary)] font-mono">
+                                      {file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Google RAG'}
+                                    </span>
+                                    <button
+                                      title="Удалить документ из RAG"
+                                      onClick={async () => {
+                                        if (!confirm(`Удалить файл "${file.fileName}" из базы знаний бота?`)) return;
+                                        try {
+                                          const res = await fetch(`/api/admin/bots/${bot.id}/files/${file.id}`, {
+                                            method: 'DELETE',
+                                            headers: { Authorization: `Bearer ${token}` }
+                                          });
+                                          if (res.ok) {
+                                            showAlert(`Файл "${file.fileName}" успешно удален из RAG бота`);
+                                            fetchAdminBots();
+                                          } else {
+                                            showAlert('Ошибка удаления файла');
+                                          }
+                                        } catch (err) {
+                                          showAlert('Сетевая ошибка при удалении файла');
+                                        }
+                                      }}
+                                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-500/10 rounded transition-colors"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                             </div>

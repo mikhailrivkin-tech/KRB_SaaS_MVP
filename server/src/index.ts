@@ -1122,6 +1122,34 @@ app.post('/api/admin/bots/:id/files', authenticateToken, requireAdmin, upload.si
   }
 });
 
+app.delete('/api/admin/bots/:botId/files/:fileId', authenticateToken, requireAdmin, async (req, res) => {
+  const { botId, fileId } = req.params;
+  try {
+    const botFile = await prisma.botFile.findUnique({ where: { id: fileId } });
+    if (!botFile) {
+      return res.status(404).json({ error: 'Файл не найден в базе данных' });
+    }
+
+    const bot = await prisma.bot.findUnique({ where: { id: botId } });
+    if (botFile.googleFileId) {
+      try {
+        await deleteFileFromStore(botFile.googleFileId);
+      } catch (gErr) {
+        console.error(`[Google Delete Warning] Could not delete file ${botFile.googleFileId} from Google:`, gErr);
+      }
+    }
+
+    await prisma.botFile.delete({ where: { id: fileId } });
+    if (bot?.fileSearchStoreName) {
+      invalidateStoreCache(bot.fileSearchStoreName);
+    }
+
+    res.json({ success: true, message: 'Файл успешно удален из базы знаний бота' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Не удалось удалить файл из RAG бота', details: error.message });
+  }
+});
+
 // ==================== LOGGING API ENDPOINTS ====================
 
 // Client Telemetry Endpoint (Log client actions, clicks, errors)
