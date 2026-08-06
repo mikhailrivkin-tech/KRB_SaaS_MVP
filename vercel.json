@@ -10,7 +10,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "https://krb-saas-api.onrender.com/api/$1"
+      "dest": "https://krb-saas-mvp.onrender.com/api/$1"
     },
     {
       "src": "/(.*)",
