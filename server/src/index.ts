@@ -821,11 +821,27 @@ app.get('/api/admin/bots', authenticateToken, requireAdmin, async (req, res) => 
     // Synchronize DB BotFile table with real files from Google File Search Store
     const syncedBots = await Promise.all(
       rawBots.map(async (bot) => {
-        if (!bot.fileSearchStoreName) return bot;
+        let storeName = bot.fileSearchStoreName;
+
+        // Auto-heal missing storeName if API key is active
+        if (!storeName) {
+          try {
+            const expectedStoreDisplayName = bot.name === 'Маркетолог' ? 'bot_marketing_expert' : `bot_store_${bot.id}`;
+            storeName = await ensureFileSearchStore(expectedStoreDisplayName);
+            await prisma.bot.update({
+              where: { id: bot.id },
+              data: { fileSearchStoreName: storeName }
+            });
+            bot.fileSearchStoreName = storeName;
+          } catch (e) {
+            console.warn(`[RAG Auto-Heal Defer] API Key not set or failed to link store for bot ${bot.id}`);
+            return bot;
+          }
+        }
 
         try {
-          // 1. Fetch real files from Google RAG Store
-          const googleFiles = await listFilesFromStore(bot.fileSearchStoreName);
+          // Fetch real files from Google RAG Store
+          const googleFiles = await listFilesFromStore(storeName);
           const activeGoogleFileNames = new Set<string>();
 
           for (const gf of googleFiles) {
@@ -859,7 +875,7 @@ app.get('/api/admin/bots', authenticateToken, requireAdmin, async (req, res) => 
 
           // Return fresh bot files from DB after sync
           const freshFiles = await prisma.botFile.findMany({ where: { botId: bot.id } });
-          return { ...bot, files: freshFiles };
+          return { ...bot, fileSearchStoreName: storeName, files: freshFiles };
         } catch (syncErr) {
           console.error(`[RAG Sync Error] Failed to sync RAG Store for bot ${bot.id}:`, syncErr);
           return bot;
