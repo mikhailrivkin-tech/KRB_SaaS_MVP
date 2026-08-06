@@ -629,8 +629,10 @@ export function AppContent() {
     if (token) {
       fetchBots();
       fetchFiles();
+      fetchAdminBots();
+      fetchAdminUsers();
     }
-  }, [token]);
+  }, [token, userRole]);
 
   useEffect(() => {
     if (selectedBot) {
@@ -649,7 +651,8 @@ export function AppContent() {
       fetchDynamicModels();
       fetchRagStats();
       fetchSettings();
-      if (adminTab === 'users') fetchAdminUsers();
+      fetchAdminBots();
+      fetchAdminUsers();
       if (adminTab === 'diagnostics') fetchDiagnostics();
     }
   }, [token, userRole, adminTab]);
@@ -1000,8 +1003,11 @@ export function AppContent() {
     try {
       const res = await fetch('/api/admin/bots', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      setAdminBots(data.bots || []);
-      setAdminUsers(data.users || []);
+      const botList = Array.isArray(data) ? data : (data.bots || []);
+      setAdminBots(botList);
+      if (data && data.users) {
+        setAdminUsers(data.users);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -1400,7 +1406,10 @@ export function AppContent() {
               <Key size={18} /> API-ключи
             </button>
             <button
-              onClick={() => setAdminTab('bots')}
+              onClick={() => {
+                setAdminTab('bots');
+                fetchAdminBots();
+              }}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 adminTab === 'bots'
                   ? 'bg-[var(--color-accent-primary)] text-white'
@@ -1423,6 +1432,7 @@ export function AppContent() {
               onClick={() => {
                 logClientAction('INFO', 'Переключение на вкладку [Пользователи]');
                 setAdminTab('users');
+                fetchAdminUsers();
               }}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                 adminTab === 'users'
@@ -1617,8 +1627,8 @@ export function AppContent() {
                 </Card>
 
                 <div className="space-y-4">
-                  {adminBots.map(bot => (
-                    <Card key={bot.id} className="space-y-4">
+                  {(adminBots.length > 0 ? adminBots : bots).map(bot => (
+                    <Card key={`${bot.id}_${bot.name}`} className="space-y-4">
                       <div className="flex items-start justify-between">
                         <div className="space-y-3 flex-1 mr-4">
                           <div className="space-y-1">

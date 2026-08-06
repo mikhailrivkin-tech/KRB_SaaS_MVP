@@ -838,78 +838,14 @@ app.get('/api/admin/bots', authenticateToken, requireAdmin, async (req, res) => 
       }
     });
 
-    // Synchronize DB BotFile table with real files from Google File Search Store
-    const syncedBots = await Promise.all(
-      rawBots.map(async (bot) => {
-        let storeName = bot.fileSearchStoreName;
-
-        // Auto-heal missing storeName if API key is active
-        if (!storeName) {
-          try {
-            const expectedStoreDisplayName = bot.name === 'Маркетолог' ? 'bot_marketing_expert' : `bot_store_${bot.id}`;
-            storeName = await ensureFileSearchStore(expectedStoreDisplayName);
-            await prisma.bot.update({
-              where: { id: bot.id },
-              data: { fileSearchStoreName: storeName }
-            });
-            bot.fileSearchStoreName = storeName;
-          } catch (e: any) {
-            console.warn(`[RAG Auto-Heal Defer] API Key not set or failed to link store for bot ${bot.id}:`, e?.message || e);
-            return bot;
-          }
-        }
-
-        try {
-          // Fetch real files from Google RAG Store
-          const googleFiles = await listFilesFromStore(storeName);
-          const activeGoogleFileNames = new Set<string>();
-
-          for (const gf of googleFiles) {
-            const rawName = gf.displayName || gf.name || 'unnamed_file';
-            const decodedName = decodeFilename(rawName);
-            const googleFileId = gf.name || gf.id || '';
-            const fileSize = Number(gf.sizeBytes || 0);
-
-            activeGoogleFileNames.add(decodedName);
-
-            // Upsert into BotFile table so DB matches Google RAG Store 1:1
-            const existingFile = bot.files.find(f => f.fileName === decodedName || f.googleFileId === googleFileId);
-            if (!existingFile) {
-              await prisma.botFile.create({
-                data: {
-                  botId: bot.id,
-                  fileName: decodedName,
-                  fileSize: fileSize,
-                  googleFileId: googleFileId
-                }
-              });
-            }
-          }
-
-          // Delete phantom DB files that no longer exist in Google RAG Store
-          for (const dbFile of bot.files) {
-            if (!activeGoogleFileNames.has(dbFile.fileName)) {
-              await prisma.botFile.delete({ where: { id: dbFile.id } }).catch(() => {});
-            }
-          }
-
-          // Return fresh bot files from DB after sync
-          const freshFiles = await prisma.botFile.findMany({ where: { botId: bot.id } });
-          return { ...bot, fileSearchStoreName: storeName, files: freshFiles };
-        } catch (syncErr) {
-          console.error(`[RAG Sync Error] Failed to sync RAG Store for bot ${bot.id}:`, syncErr);
-          return bot;
-        }
-      })
-    );
-
     const users = await prisma.user.findMany({
       where: { role: 'CLIENT' },
       select: { id: true, email: true }
     });
-    res.json({ bots: syncedBots, users });
-  } catch (err: any) {
-    res.status(500).json({ error: 'Не удалось получить список ассистентов', details: err.message });
+
+    res.json({ bots: rawBots, users });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -1418,8 +1354,9 @@ async function ensureDefaultUsers() {
 }
 
 const portNum = Number(PORT) || 5001;
-app.listen(portNum, '0.0.0.0', async () => {
-  logInfo(`Сервер запущен на 0.0.0.0:${portNum} [Уровень: ${getSystemLogLevel()}]`);
-  console.log(`Server listening on 0.0.0.0:${portNum}`);
+const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
+app.listen(portNum, host, async () => {
+  logInfo(`Сервер запущен на ${host}:${portNum} [Уровень: ${getSystemLogLevel()}]`);
+  console.log(`Server listening on ${host}:${portNum}`);
   await ensureDefaultUsers();
 });

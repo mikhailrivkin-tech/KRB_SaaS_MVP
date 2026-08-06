@@ -1,6 +1,6 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 generator client {
@@ -106,8 +106,8 @@ model SystemSettings {
   summarizationThreshold  Int      @default(30)
   rateLimitPerMinute      Int      @default(20)
   rateLimitPerDay         Int      @default(500)
-  clientRagQuotaMB        Int      @default(500) // Лимит RAG-памяти клиента в мегабайтах (MB)
-  dualRagPrompt           String?  // Эталонный шаблон промпта Dual-RAG иерархии (редактируемый из админки)
+  clientRagQuotaMB        Int      @default(500)
+  dualRagPrompt           String?
   updatedAt               DateTime @updatedAt
 }
 
@@ -124,16 +124,16 @@ model ApiDiagnostics {
   userId           String?
   botId            String?
   endpoint         String
-  status           String   // 'SUCCESS' | 'ERROR'
+  status           String
   errorMessage     String?
-  responseTime     Int      // ms total
-  modelName        String?  // which Gemini model was used
-  finishReason     String?  // Gemini finishReason (STOP, MAX_TOKENS, SAFETY, etc)
-  fileSearchUsed   Boolean? // was fileSearch tool active for this request
-  ragMode          String?  // 'NONE' | 'BOT_ONLY' | 'CLIENT_ONLY' | 'DUAL_RAG'
-  retrievalTimeMs  Int?     // time spent in RAG retrieval
-  generationTimeMs Int?     // time spent in text generation
-  queryLength      Int?     // character length of user query
+  responseTime     Int
+  modelName        String?
+  finishReason     String?
+  fileSearchUsed   Boolean?
+  ragMode          String?
+  retrievalTimeMs  Int?
+  generationTimeMs Int?
+  queryLength      Int?
   createdAt        DateTime @default(now())
 }
 
@@ -141,7 +141,7 @@ model ThemeToken {
   id          String   @id @default(uuid())
   tokenName   String   @unique
   value       String
-  category    String   @default("color") // "color" | "typography" | "spacing"
+  category    String   @default("color")
   editable    Boolean  @default(true)
   description String?
   updatedAt   DateTime @updatedAt
