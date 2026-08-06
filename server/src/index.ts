@@ -810,14 +810,71 @@ app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req, res) =>
 });
 
 app.get('/api/admin/bots', authenticateToken, requireAdmin, async (req, res) => {
-  const bots = await prisma.bot.findMany({
-    include: { clientAccess: { include: { user: { select: { id: true, email: true } } } } }
-  });
-  const users = await prisma.user.findMany({
-    where: { role: 'CLIENT' },
-    select: { id: true, email: true }
-  });
-  res.json({ bots, users });
+  try {
+    const rawBots = await prisma.bot.findMany({
+      include: {
+        clientAccess: { include: { user: { select: { id: true, email: true } } } },
+        files: true
+      }
+    });
+
+    // Synchronize DB BotFile table with real files from Google File Search Store
+    const syncedBots = await Promise.all(
+      rawBots.map(async (bot) => {
+        if (!bot.fileSearchStoreName) return bot;
+
+        try {
+          // 1. Fetch real files from Google RAG Store
+          const googleFiles = await listFilesFromStore(bot.fileSearchStoreName);
+          const activeGoogleFileNames = new Set<string>();
+
+          for (const gf of googleFiles) {
+            const rawName = gf.displayName || gf.name || 'unnamed_file';
+            const decodedName = decodeFilename(rawName);
+            const googleFileId = gf.name || gf.id || '';
+            const fileSize = Number(gf.sizeBytes || 0);
+
+            activeGoogleFileNames.add(decodedName);
+
+            // Upsert into BotFile table so DB matches Google RAG Store 1:1
+            const existingFile = bot.files.find(f => f.fileName === decodedName || f.googleFileId === googleFileId);
+            if (!existingFile) {
+              await prisma.botFile.create({
+                data: {
+                  botId: bot.id,
+                  fileName: decodedName,
+                  fileSize: fileSize,
+                  googleFileId: googleFileId
+                }
+              });
+            }
+          }
+
+          // Delete phantom DB files that no longer exist in Google RAG Store
+          for (const dbFile of bot.files) {
+            if (!activeGoogleFileNames.has(dbFile.fileName)) {
+              await prisma.botFile.delete({ where: { id: dbFile.id } }).catch(() => {});
+            }
+          }
+
+          // Return fresh bot files from DB after sync
+          const freshFiles = await prisma.botFile.findMany({ where: { botId: bot.id } });
+          return { ...bot, files: freshFiles };
+        } catch (syncErr) {
+          console.error(`[RAG Sync Error] Failed to sync RAG Store for bot ${bot.id}:`, syncErr);
+          return bot;
+        }
+      })
+    );
+
+    const users = await prisma.user.findMany({
+      where: { role: 'CLIENT' },
+      select: { id: true, email: true }
+    });
+    res.json({ bots: syncedBots, users });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Не удалось получить список ассистентов', details: err.message });
+  }
 });
 
 app.post('/api/admin/bots', authenticateToken, requireAdmin, async (req, res) => {

@@ -42,6 +42,17 @@ model Bot {
   
   clientAccess        BotClientAccess[]
   messages            ChatMessage[]
+  files               BotFile[]
+}
+
+model BotFile {
+  id           String   @id @default(uuid())
+  botId        String
+  bot          Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  fileName     String
+  fileSize     Int      @default(0)
+  googleFileId String?
+  createdAt    DateTime @default(now())
 }
 
 model BotClientAccess {
