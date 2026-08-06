@@ -1082,6 +1082,8 @@ app.delete('/api/admin/users/:id', authenticateToken, requireAdmin, async (req: 
   }
 });
 
+
+
 app.delete('/api/admin/bots/:botId/files/:fileId', authenticateToken, requireAdmin, async (req, res) => {
   const { botId, fileId } = req.params;
   try {
