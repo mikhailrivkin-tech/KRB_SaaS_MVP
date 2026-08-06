@@ -1243,7 +1243,7 @@ app.get('/api/admin/rag-stats', authenticateToken, requireAdmin, async (req, res
 });
 
 const portNum = Number(PORT) || 5001;
-app.listen(portNum, '127.0.0.1', () => {
-  logInfo(`Сервер запущен на http://127.0.0.1:${portNum} [Уровень: ${getSystemLogLevel()}]`);
-  console.log(`Server listening on http://127.0.0.1:${portNum}`);
+app.listen(portNum, '0.0.0.0', () => {
+  logInfo(`Сервер запущен на 0.0.0.0:${portNum} [Уровень: ${getSystemLogLevel()}]`);
+  console.log(`Server listening on 0.0.0.0:${portNum}`);
 });
