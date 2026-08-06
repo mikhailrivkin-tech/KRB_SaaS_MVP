@@ -1094,7 +1094,7 @@ app.post('/api/admin/bots/:id/files', authenticateToken, requireAdmin, upload.si
 
   try {
     const fileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-    const uploaded = await uploadFileToStore(
+    const uploaded: any = await uploadFileToStore(
       storeName,
       file.path,
       fileName,
@@ -1102,8 +1102,20 @@ app.post('/api/admin/bots/:id/files', authenticateToken, requireAdmin, upload.si
       'База знаний бота'
     );
     if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+
+    // Save BotFile entry in Prisma DB so frontend displays it immediately
+    const googleFileId = uploaded?.name || uploaded?.id || '';
+    const createdBotFile = await prisma.botFile.create({
+      data: {
+        botId: id,
+        fileName: fileName,
+        fileSize: file.size,
+        googleFileId: googleFileId
+      }
+    });
+
     invalidateStoreCache(storeName);
-    res.json({ message: 'Файл загружен в базу знаний бота', file: uploaded });
+    res.json({ message: 'Файл загружен в базу знаний бота', file: uploaded, botFile: createdBotFile });
   } catch (error: any) {
     if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
     res.status(500).json({ error: 'Ошибка загрузки файла базы знаний', details: error.message });
