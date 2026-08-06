@@ -298,6 +298,7 @@ export function AppContent() {
   // Chat State
   const [bots, setBots] = useState<Bot[]>([]);
   const [selectedBot, setSelectedBot] = useState<Bot | null>(null);
+  const [isBotsLoading, setIsBotsLoading] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -420,6 +421,7 @@ export function AppContent() {
   // Fetch Bots
   const fetchBots = async () => {
     if (!token) return;
+    setIsBotsLoading(true);
     try {
       const res = await fetch('/api/bots', {
         headers: { Authorization: `Bearer ${token}` }
@@ -439,6 +441,8 @@ export function AppContent() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsBotsLoading(false);
     }
   };
 
@@ -723,7 +727,7 @@ export function AppContent() {
   // Send Chat Message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || !selectedBot || isSending) return;
+    if (!inputMessage.trim() || !selectedBot || isSending || isBotsLoading) return;
 
     logClientAction('INFO', `Отправка запроса ассистенту [${selectedBot.name}]: "${inputMessage.slice(0, 50)}..."`);
 
@@ -2537,21 +2541,29 @@ export function AppContent() {
 
               {/* Top Bot Selector & Clear History */}
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-[var(--color-border)]">
-                <DropdownSelect
-                  label="Ассистент:"
-                  options={bots}
-                  value={selectedBot?.id || ''}
-                  onChange={(id) => {
-                    const b = bots.find(bot => bot.id === id);
-                    if (b) setSelectedBot(b);
-                  }}
-                />
+                {isBotsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] animate-pulse">
+                    <span className="inline-block w-3 h-3 rounded-full bg-[var(--color-accent-primary)] animate-ping" />
+                    <span>Подключение к ассистенту...</span>
+                  </div>
+                ) : (
+                  <DropdownSelect
+                    label="Ассистент:"
+                    options={bots}
+                    value={selectedBot?.id || ''}
+                    onChange={(id) => {
+                      const b = bots.find(bot => bot.id === id);
+                      if (b) setSelectedBot(b);
+                    }}
+                  />
+                )}
 
                 <Button
                   variant="ghost"
                   size="sm"
                   icon={<Trash2 size={14} />}
                   onClick={handleClearHistory}
+                  disabled={isBotsLoading}
                 >
                   Очистить чат
                 </Button>
@@ -2732,12 +2744,13 @@ export function AppContent() {
                     type="text"
                     value={inputMessage}
                     onChange={e => setInputMessage(e.target.value)}
-                    placeholder="Напишите ваш запрос или вопрос по документам..."
-                    className="w-full bg-[var(--color-surface-strong)] border border-[var(--color-border)] rounded-2xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-[var(--color-accent-primary)]"
+                    disabled={isBotsLoading}
+                    placeholder={isBotsLoading ? 'Подключение к ассистенту...' : 'Напишите ваш запрос или вопрос по документам...'}
+                    className="w-full bg-[var(--color-surface-strong)] border border-[var(--color-border)] rounded-2xl pl-4 pr-12 py-3 text-sm focus:outline-none focus:border-[var(--color-accent-primary)] disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
                   />
                   <button
                     type="submit"
-                    disabled={!inputMessage.trim() || isSending}
+                    disabled={!inputMessage.trim() || isSending || isBotsLoading || !selectedBot}
                     className="absolute right-2 p-2 bg-[var(--color-accent-primary)] hover:bg-[var(--color-accent-secondary)] disabled:opacity-40 text-white rounded-xl transition-all"
                   >
                     <Send size={16} />
