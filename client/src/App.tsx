@@ -1715,6 +1715,28 @@ export function AppContent() {
                         <p className="text-[11px] text-[var(--color-text-tertiary)]">
                           Документы, загруженные сюда, формируют общие базовые регламенты для данного бота.
                         </p>
+
+                        {/* Bot Files List Display */}
+                        {((bot as any).files && (bot as any).files.length > 0) && (
+                          <div className="mt-3 space-y-1.5 border-t border-[var(--color-border)] pt-2.5">
+                            <span className="text-[11px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider block">
+                              Загруженные документы бота ({(bot as any).files.length}):
+                            </span>
+                            <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto">
+                              {(bot as any).files.map((file: any) => (
+                                <div key={file.id || file.fileName} className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-xs">
+                                  <div className="flex items-center gap-2 truncate pr-2">
+                                    <FileText size={14} className="text-primary-600 dark:text-primary-400 shrink-0" />
+                                    <span className="font-medium text-[var(--color-text)] truncate">{file.fileName}</span>
+                                  </div>
+                                  <span className="text-[10px] text-[var(--color-text-tertiary)] font-mono shrink-0">
+                                    {file.fileSize ? `${(file.fileSize / 1024).toFixed(1)} KB` : 'Google RAG'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Bot Model Selector with Verified Dynamic Registry & Health Check */}
