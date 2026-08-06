@@ -1,3 +1,10 @@
+databases:
+  - name: krb-saas-db
+    databaseName: krb_saas
+    user: krb_user
+    region: frankfurt
+    plan: free
+
 services:
   - type: web
     name: krb-saas-api
@@ -12,3 +19,7 @@ services:
         value: 10000
       - key: JWT_SECRET
         generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: krb-saas-db
+          property: connectionString
