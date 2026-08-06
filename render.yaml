@@ -10,7 +10,7 @@ services:
     name: krb-saas-api
     env: node
     region: frankfurt
-    buildCommand: cd server && npm install && npx prisma generate && npx prisma db push && npm run build
+    buildCommand: cd server && npm install && cp prisma/schema.prod.prisma prisma/schema.prisma && npx prisma generate && npx prisma db push && npm run build
     startCommand: cd server && npm start
     envVars:
       - key: NODE_ENV
