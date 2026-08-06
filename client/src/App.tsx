@@ -750,7 +750,13 @@ export function AppContent() {
         })
       });
 
-      const data = await res.json();
+      let data: any = {};
+      try {
+        const textResponse = await res.text();
+        data = textResponse ? JSON.parse(textResponse) : {};
+      } catch (parseErr) {
+        data = { error: 'Облачный сервер временно обновляется. Пожалуйста, повторите запрос через 15-30 секунд.' };
+      }
 
       if (!res.ok) {
         const errTxt = data.error || 'Не удалось получить ответ от ассистента.';
