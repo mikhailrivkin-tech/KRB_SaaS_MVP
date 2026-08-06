@@ -427,8 +427,14 @@ export function AppContent() {
       if (res.ok) {
         const data = await res.json();
         setBots(data);
-        if (data.length > 0 && !selectedBot) {
-          setSelectedBot(data[0]);
+        if (data.length > 0) {
+          // Auto-heal: verify if current selectedBot exists in fresh server data
+          const validBot = data.find((b: any) => b.id === selectedBot?.id);
+          if (validBot) {
+            setSelectedBot(validBot);
+          } else {
+            setSelectedBot(data[0]);
+          }
         }
       }
     } catch (err) {
