@@ -118,20 +118,22 @@ async function initDefaults() {
   });
   console.log('Client user guaranteed: email=client@krb.ai, password=client123');
 
-  // Ensure GEMINI_API_KEY from .env is seeded into ApiKey table if empty AND valid
-  const activeKeyInDb = await prisma.apiKey.findFirst({ where: { service: 'GEMINI' } });
-  if (!activeKeyInDb && process.env.GEMINI_API_KEY && !process.env.GEMINI_API_KEY.includes('placeholder') && process.env.GEMINI_API_KEY.length > 15) {
+  // Ensure GEMINI_API_KEY from process.env is seeded into ApiKey table on boot
+  if (process.env.GEMINI_API_KEY && !process.env.GEMINI_API_KEY.includes('placeholder') && process.env.GEMINI_API_KEY.length > 15) {
     try {
-      const { encryptedKey, iv } = encryptApiKey(process.env.GEMINI_API_KEY);
-      await prisma.apiKey.create({
-        data: {
-          service: 'GEMINI',
-          encryptedKey,
-          iv,
-          isActive: true
-        }
-      });
-      console.log('Seeded GEMINI_API_KEY from env into ApiKey table successfully.');
+      const activeKeyInDb = await prisma.apiKey.findFirst({ where: { service: 'GEMINI' } });
+      if (!activeKeyInDb) {
+        const { encryptedKey, iv } = encryptApiKey(process.env.GEMINI_API_KEY);
+        await prisma.apiKey.create({
+          data: {
+            service: 'GEMINI',
+            encryptedKey,
+            iv,
+            isActive: true
+          }
+        });
+        console.log('Seeded GEMINI_API_KEY from env into ApiKey table successfully.');
+      }
     } catch (e) {
       console.error('Failed to seed GEMINI_API_KEY into DB:', e);
     }

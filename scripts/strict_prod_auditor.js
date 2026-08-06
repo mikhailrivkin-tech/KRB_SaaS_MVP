@@ -6,6 +6,7 @@ async function runProdAuditor() {
   const artifactsDir = '/Users/ghost/.gemini/antigravity/brain/2fdf06ea-2281-486c-b17f-c8470f1d4f97';
   const resultsPath = path.join(artifactsDir, 'ui_e2e_results.json');
   const screenshotPath = path.join(artifactsDir, 'ui_screenshot.png');
+  const liveKeysScreenshot = path.join(artifactsDir, 'prod_keys_tab.png');
   const liveAdminScreenshot = path.join(artifactsDir, 'prod_admin_dashboard.png');
   const liveUsersScreenshot = path.join(artifactsDir, 'prod_users_tab.png');
   
@@ -16,7 +17,7 @@ async function runProdAuditor() {
   console.log('🛡️ RUNNING PRODUCTION STRICT AUDITOR (LIVE VERIFICATION)');
   console.log('====================================================');
 
-  const prodBaseUrl = 'https://krb-saas-api.onrender.com';
+  const prodBaseUrl = 'https://krb-saas-mvp.onrender.com';
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -57,12 +58,38 @@ async function runProdAuditor() {
 
     await page.goto(`${prodBaseUrl}/admin`, { waitUntil: 'networkidle0', timeout: 30000 });
     await page.waitForSelector('aside', { timeout: 20000 });
-    await page.evaluate(() => new Promise(r => setTimeout(r, 3000)));
+    await page.evaluate(() => new Promise(r => setTimeout(r, 2000)));
 
-    // Step 3: Audit Assistants & RAG Store Tab
-    console.log('[Prod Auditor] Step 3: Auditing Assistants Tab on Production...');
+    // Step 3: Audit API Keys Tab on Production
+    console.log('[Prod Auditor] Step 3: Auditing API Keys Tab on Production...');
+    const navButtons = await page.$$('aside button');
+    for (const btn of navButtons) {
+      const text = await page.evaluate(el => el.textContent, btn);
+      if (text && text.includes('API-ключи')) {
+        await btn.click();
+        break;
+      }
+    }
+    await page.evaluate(() => new Promise(r => setTimeout(r, 2000)));
+
+    const keysTabText = await page.evaluate(() => document.body.innerText);
+    if (!keysTabText.includes('GEMINI')) {
+      violations.push('Production API Keys Tab is EMPTY: Active GEMINI API key is missing in Production database!');
+    }
+    await page.screenshot({ path: liveKeysScreenshot, fullPage: true });
+
+    // Step 4: Audit Assistants & RAG Store Tab on Production
+    console.log('[Prod Auditor] Step 4: Auditing Assistants Tab on Production...');
+    for (const btn of navButtons) {
+      const text = await page.evaluate(el => el.textContent, btn);
+      if (text && text.includes('Ассистенты')) {
+        await btn.click();
+        break;
+      }
+    }
+    await page.evaluate(() => new Promise(r => setTimeout(r, 4000)));
+
     const botsTabText = await page.evaluate(() => document.body.innerText);
-    
     if (botsTabText.includes('Ошибка сети') || botsTabText.includes('Ошибка сервера')) {
       violations.push('Production Assistants Tab displays Network Error modal / banner');
     }
@@ -73,10 +100,9 @@ async function runProdAuditor() {
     await page.screenshot({ path: liveAdminScreenshot, fullPage: true });
     await page.screenshot({ path: screenshotPath, fullPage: true });
 
-    // Step 4: Audit Users Tab on Production
-    console.log('[Prod Auditor] Step 4: Auditing Users Tab on Production...');
-    const userButtons = await page.$$('aside button');
-    for (const btn of userButtons) {
+    // Step 5: Audit Users Tab on Production
+    console.log('[Prod Auditor] Step 5: Auditing Users Tab on Production...');
+    for (const btn of navButtons) {
       const text = await page.evaluate(el => el.textContent, btn);
       if (text && text.includes('Пользователи')) {
         await btn.click();
@@ -110,6 +136,7 @@ async function runProdAuditor() {
     passed: isPassed,
     violations: violations,
     screenshots: [
+      liveKeysScreenshot,
       liveAdminScreenshot,
       liveUsersScreenshot,
       screenshotPath

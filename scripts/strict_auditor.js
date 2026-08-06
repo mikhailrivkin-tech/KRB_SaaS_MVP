@@ -53,10 +53,27 @@ async function runAuditor() {
     await page.waitForSelector('aside', { timeout: 15000 });
     await page.evaluate(() => new Promise(r => setTimeout(r, 2000)));
 
-    // Step 2: Audit Bots / Assistants Tab
-    console.log('[Auditor] Step 2: Auditing Assistants Tab...');
-    const botButtons = await page.$$('aside button');
-    for (const btn of botButtons) {
+    // Step 2: Audit API Keys Tab
+    console.log('[Auditor] Step 2: Auditing API Keys Tab...');
+    const navButtons = await page.$$('aside button');
+    for (const btn of navButtons) {
+      const text = await page.evaluate(el => el.textContent, btn);
+      if (text && text.includes('API-ключи')) {
+        await btn.click();
+        break;
+      }
+    }
+    await page.evaluate(() => new Promise(r => setTimeout(r, 2000)));
+
+    const keysTabText = await page.evaluate(() => document.body.innerText);
+    if (!keysTabText.includes('GEMINI')) {
+      violations.push('API Keys Tab is EMPTY: Active GEMINI API key is missing in database table!');
+    }
+    await page.screenshot({ path: path.join(artifactsDir, 'auditor_keys_tab.png'), fullPage: true });
+
+    // Step 3: Audit Bots / Assistants Tab
+    console.log('[Auditor] Step 3: Auditing Assistants Tab...');
+    for (const btn of navButtons) {
       const text = await page.evaluate(el => el.textContent, btn);
       if (text && text.includes('Ассистенты')) {
         await btn.click();
@@ -76,10 +93,9 @@ async function runAuditor() {
 
     await page.screenshot({ path: path.join(artifactsDir, 'auditor_bots_tab.png'), fullPage: true });
 
-    // Step 3: Audit Users Tab
-    console.log('[Auditor] Step 3: Auditing Users Tab...');
-    const userButtons = await page.$$('aside button');
-    for (const btn of userButtons) {
+    // Step 4: Audit Users Tab
+    console.log('[Auditor] Step 4: Auditing Users Tab...');
+    for (const btn of navButtons) {
       const text = await page.evaluate(el => el.textContent, btn);
       if (text && text.includes('Пользователи')) {
         await btn.click();
@@ -113,6 +129,7 @@ async function runAuditor() {
     passed: isPassed,
     violations: violations,
     screenshots: [
+      path.join(artifactsDir, 'auditor_keys_tab.png'),
       path.join(artifactsDir, 'auditor_bots_tab.png'),
       path.join(artifactsDir, 'auditor_users_tab.png')
     ]
