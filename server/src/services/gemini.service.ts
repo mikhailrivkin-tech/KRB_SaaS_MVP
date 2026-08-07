@@ -187,7 +187,7 @@ export async function generateRAGAnswer(params: {
 }) {
   const ai = await getGeminiClient();
   const startTime = Date.now();
-  const modelName = params.modelName || 'gemini-2.5-flash';
+  const modelName = params.modelName || 'gemini-2.0-flash';
 
   // Determine if RAG stores should be used for this request
   const storeNames: string[] = [];

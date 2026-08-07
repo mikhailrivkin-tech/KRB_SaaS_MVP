@@ -286,7 +286,7 @@ app.post('/api/admin/bots/verify-model', authenticateToken, requireAdmin, async 
 app.get('/api/admin/models', authenticateToken, requireAdmin, async (req: AuthRequest, res: any) => {
   try {
     const presetModels = [
-      { name: 'gemini-2.5-flash', label: 'gemini-2.5-flash (⚡ Быстрая и экономичная — Флагман RAG)' },
+      { name: 'gemini-2.0-flash', label: 'gemini-2.0-flash (⚡ Быстрая и экономичная — Флагман RAG)' },
       { name: 'gemini-2.5-pro', label: 'gemini-2.5-pro (🧠 Максимальная точность для сложного анализа)' },
       { name: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp (⚡ Скоростная Flash 2.0)' },
       { name: 'gemini-1.5-flash', label: 'gemini-1.5-flash (Стандартная Flash 1.5)' },
@@ -401,7 +401,7 @@ app.post('/api/chat', authenticateToken, async (req: AuthRequest, res) => {
       clientStoreName: userStore?.fileSearchStoreName || undefined,
       historyMessages,
       currentQuestion: message,
-      modelName: (bot as any).modelName || 'gemini-2.5-flash'
+      modelName: (bot as any).modelName || 'gemini-2.0-flash'
     });
 
     // 2. Save Model response to DB
@@ -455,7 +455,7 @@ app.post('/api/chat', authenticateToken, async (req: AuthRequest, res) => {
         status: 'ERROR',
         errorMessage: error.message || 'Ошибка генерации Gemini API',
         responseTime: error.responseTime || responseTime,
-        modelName: error.modelName || (bot as any).modelName || 'gemini-2.5-flash',
+        modelName: error.modelName || (bot as any).modelName || 'gemini-2.0-flash',
         fileSearchUsed: error.fileSearchUsed ?? null,
         ragMode: error.ragMode ?? null,
         queryLength: error.queryLength ?? message.length

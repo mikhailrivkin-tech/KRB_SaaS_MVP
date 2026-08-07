@@ -1044,7 +1044,7 @@ export function AppContent() {
   const [newBotName, setNewBotName] = useState('');
   const [newBotDesc, setNewBotDesc] = useState('');
   const [newBotPrompt, setNewBotPrompt] = useState('');
-  const [newBotModel, setNewBotModel] = useState('gemini-2.5-flash');
+  const [newBotModel, setNewBotModel] = useState('gemini-2.0-flash');
   const [isApiKeyConfigured, setIsApiKeyConfigured] = useState<boolean>(true);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [ragStats, setRagStats] = useState<any>(null);
@@ -1799,7 +1799,7 @@ export function AppContent() {
                           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 shadow-xs">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span>
-                              Активна: {(bot as any).modelName || 'gemini-2.5-flash'}
+                              Активна: {(bot as any).modelName || 'gemini-2.0-flash'}
                               {modelPingLatencyMap[bot.id] ? ` (${modelPingLatencyMap[bot.id]} мс)` : ''}
                             </span>
                           </div>
@@ -1817,7 +1817,7 @@ export function AppContent() {
                           <>
                             <select
                               id={`bot-model-${bot.id}`}
-                              defaultValue={(bot as any).modelName || 'gemini-2.5-flash'}
+                              defaultValue={(bot as any).modelName || 'gemini-2.0-flash'}
                               className="w-full bg-[var(--color-surface-strong)] border border-[var(--color-border)] rounded-xl p-2.5 text-xs font-semibold text-[var(--color-accent-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent-primary)]"
                               onChange={(e) => {
                                 const customInput = document.getElementById(`bot-model-custom-${bot.id}`) as HTMLInputElement;
@@ -1827,11 +1827,11 @@ export function AppContent() {
                               }}
                             >
                               {(() => {
-                                const currentModel = (bot as any).modelName || 'gemini-2.5-flash';
+                                const currentModel = (bot as any).modelName || 'gemini-2.0-flash';
                                 const optionsList = [...dynamicModels];
                                 if (optionsList.length === 0) {
                                   optionsList.push(
-                                    { name: 'gemini-2.5-flash', label: 'gemini-2.5-flash (⚡ Быстрая и экономичная — Флагман RAG)' },
+                                    { name: 'gemini-2.0-flash', label: 'gemini-2.0-flash (⚡ Быстрая и экономичная — Флагман RAG)' },
                                     { name: 'gemini-2.5-pro', label: 'gemini-2.5-pro (🧠 Максимальная точность для сложного анализа)' },
                                     { name: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp (⚡ Скоростная Flash 2.0)' },
                                     { name: 'gemini-1.5-flash', label: 'gemini-1.5-flash (Стандартная Flash 1.5)' },
@@ -1854,8 +1854,8 @@ export function AppContent() {
                             <div className="flex gap-2 items-center flex-wrap">
                               <Input
                                 id={`bot-model-custom-${bot.id}`}
-                                defaultValue={(bot as any).modelName || 'gemini-2.5-flash'}
-                                placeholder="Например: gemini-2.5-flash..."
+                                defaultValue={(bot as any).modelName || 'gemini-2.0-flash'}
+                                placeholder="Например: gemini-2.0-flash..."
                                 className="text-xs flex-1 min-w-[200px]"
                                 onChange={(e) => {
                                   const selectEl = document.getElementById(`bot-model-${bot.id}`) as HTMLSelectElement;
@@ -2409,7 +2409,7 @@ export function AppContent() {
                               {new Date(log.createdAt).toLocaleTimeString()}
                             </td>
                             <td className="p-4 font-semibold text-[var(--color-accent-primary)] font-mono">
-                              {log.modelName || 'gemini-2.5-flash'}
+                              {log.modelName || 'gemini-2.0-flash'}
                             </td>
                             <td className="p-4 font-mono text-[var(--color-text-primary)]">
                               {log.responseTime ? `${log.responseTime} мс` : '-'}

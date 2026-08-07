@@ -1,6 +1,6 @@
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -36,7 +36,7 @@ model Bot {
   description         String?
   systemInstruction   String
   fileSearchStoreName String?
-  modelName           String            @default("gemini-2.5-flash")
+  modelName           String            @default("gemini-2.0-flash")
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   
