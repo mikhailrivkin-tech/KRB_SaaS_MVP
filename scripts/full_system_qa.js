@@ -30,23 +30,36 @@ async function runFullSystemQA() {
     }
   });
 
+  const targetEnv = process.argv[2] || 'local';
+  const isProd = targetEnv === 'prod';
+  const appUrl = isProd ? 'https://krb-saa-s-mvp.vercel.app' : 'http://localhost:5173';
+  const loginTimeout = isProd ? 15000 : 5000;
+
   try {
-    console.log('\n--- SCENARIO 1: CLIENT FILE LIFECYCLE AUDIT (client@krb.ai) ---');
+    console.log(`\n--- SCENARIO 1: CLIENT FILE LIFECYCLE AUDIT (client@krb.ai) on [${targetEnv.toUpperCase()}] ---`);
     
     // 1. LOGIN & SOLUTION 2 BUNDLE HASH ASSERTION
     console.log('[1/5] Logging in as Client & Verifying Live Dev Bundle Marker...');
-    await page.goto('http://localhost:5173', { waitUntil: 'networkidle0' });
+    await page.goto(appUrl, { waitUntil: 'networkidle0' });
+    
+    // Clear localStorage to avoid role/token leak from previous tests and reload
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(appUrl, { waitUntil: 'networkidle0' });
 
-    // SOLUTION 2: BUNDLE HASH ASSERTION (Verify page is serving live fresh code)
-    const buildTimestamp = await page.evaluate(() => window.__BUILD_TIMESTAMP__);
-    console.log('Detected Live Build Timestamp on page:', buildTimestamp);
+    if (!isProd) {
+      // SOLUTION 2: BUNDLE HASH ASSERTION (Verify page is serving live fresh code)
+      const buildTimestamp = await page.evaluate(() => window.__BUILD_TIMESTAMP__);
+      console.log('Detected Live Build Timestamp on page:', buildTimestamp);
 
-    if (buildTimestamp !== 'LIVE_DEV_2026_07_29_V3') {
-      throw new Error(`CRITICAL BUNDLE DESYNC FAIL: Server is serving stale code "${buildTimestamp}" instead of "LIVE_DEV_2026_07_29_V3"!`);
+      if (buildTimestamp !== 'LIVE_DEV_2026_07_29_V3') {
+        throw new Error(`CRITICAL BUNDLE DESYNC FAIL: Server is serving stale code "${buildTimestamp}" instead of "LIVE_DEV_2026_07_29_V3"!`);
+      }
+      console.log('✅ SOLUTION 2 PASSED: Confirmed page is 100% serving live fresh code from App.tsx!');
+    } else {
+      console.log('Skipping Build Timestamp verification for production build.');
     }
-    console.log('✅ SOLUTION 2 PASSED: Confirmed page is 100% serving live fresh code from App.tsx!');
 
-    await page.waitForSelector('input[type="email"]', { timeout: 5000 });
+    await page.waitForSelector('input[type="email"]', { timeout: loginTimeout });
     await page.type('input[type="email"]', 'client@krb.ai');
     await page.type('input[type="password"]', 'client123');
     await page.click('button[type="submit"]');
@@ -71,19 +84,19 @@ async function runFullSystemQA() {
     const fileInput = await page.$('input[type="file"]');
     if (fileInput) {
       await fileInput.uploadFile(testFilePath);
-      // Wait 300ms to catch active Pending UI
-      await new Promise(r => setTimeout(r, 300));
     }
 
     // PHASE 1 ASSERTION: Verify active progress bar UI during upload
-    const uploadPendingStateText = await page.evaluate(() => document.body.innerText);
-    const hasUploadPendingUI = uploadPendingStateText.includes('Идет векторная индексация файла') || 
-                               uploadPendingStateText.includes('Загрузка в Google Gemini Vector Store');
-    
-    if (!hasUploadPendingUI) {
+    console.log('Waiting for active upload progress bar in DOM...');
+    try {
+      await page.waitForFunction(() => {
+        const text = document.body.innerText;
+        return text.includes('Идет векторная индексация файла') || text.includes('Загрузка в Google Gemini Vector Store');
+      }, { timeout: 8000 });
+      console.log('✅ PHASE 1 PASSED: Upload Progress Bar & Spinner UI actively confirmed in DOM!');
+    } catch (e) {
       throw new Error(`PHASE 1 FAIL: Active Upload Status Bar / Progress Bar was NOT detected in DOM during file upload!`);
     }
-    console.log('✅ PHASE 1 PASSED: Upload Progress Bar & Spinner UI actively confirmed in DOM!');
 
     // Capture Frame 1: Active Upload Status Bar
     const screenshot1Path = path.join(__dirname, 'frame_1_upload_progressbar.png');
@@ -150,15 +163,16 @@ async function runFullSystemQA() {
     });
 
     // Catch Active Delete Pending UI
-    await new Promise(r => setTimeout(r, 300));
-    const deletePendingText = await page.evaluate(() => document.body.innerText);
-    const hasDeletePendingUI = deletePendingText.includes('Удаление файла из Google RAG Store') || 
-                               deletePendingText.includes('Удаление...');
-
-    if (!hasDeletePendingUI) {
+    console.log('Waiting for active delete progress bar in DOM...');
+    try {
+      await page.waitForFunction(() => {
+        const text = document.body.innerText;
+        return text.includes('Удаление файла из Google RAG Store') || text.includes('Удаление...');
+      }, { timeout: 8000 });
+      console.log('✅ PHASE 1 PASSED: Delete Status Bar & Spinner UI actively confirmed in DOM!');
+    } catch (e) {
       throw new Error(`PHASE 1 FAIL: Active Delete Status Bar was NOT detected in DOM after confirming delete!`);
     }
-    console.log('✅ PHASE 1 PASSED: Delete Status Bar & Spinner UI actively confirmed in DOM!');
 
     // Capture Frame 3: Active Delete Status Bar
     const screenshot3Path = path.join(__dirname, 'frame_3_delete_progressbar.png');

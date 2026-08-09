@@ -633,8 +633,10 @@ export function AppContent() {
     if (token) {
       fetchBots();
       fetchFiles();
-      fetchAdminBots();
-      fetchAdminUsers();
+      if (userRole === 'ADMIN') {
+        fetchAdminBots();
+        fetchAdminUsers();
+      }
     }
   }, [token, userRole]);
 
