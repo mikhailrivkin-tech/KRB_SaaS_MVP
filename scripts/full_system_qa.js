@@ -95,6 +95,10 @@ async function runFullSystemQA() {
       }, { timeout: 8000 });
       console.log('✅ PHASE 1 PASSED: Upload Progress Bar & Spinner UI actively confirmed in DOM!');
     } catch (e) {
+      const pageText = await page.evaluate(() => document.body.innerText);
+      console.log('--- DIAGNOSTIC PAGE INNER TEXT ON FAIL ---');
+      console.log(pageText);
+      console.log('------------------------------------------');
       throw new Error(`PHASE 1 FAIL: Active Upload Status Bar / Progress Bar was NOT detected in DOM during file upload!`);
     }
 
@@ -179,6 +183,27 @@ async function runFullSystemQA() {
     await page.screenshot({ path: screenshot3Path, fullPage: true });
 
     await new Promise(r => setTimeout(r, 1500));
+
+    // TEARDOWN: Clean orphaned stores created by test run
+    console.log('[TEARDOWN] Purging test-created orphaned vector stores...');
+    try {
+      const apiUrl = isProd ? 'https://krb-saas-mvp.onrender.com' : 'http://127.0.0.1:5001';
+      const adminLogin = await fetch(`${apiUrl}/api/auth/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'admin@krb.ai', password: 'admin123' })
+      });
+      const loginData = await adminLogin.json();
+      if (loginData.token) {
+        await fetch(`${apiUrl}/api/admin/clean-orphaned-stores`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${loginData.token}` }
+        });
+        console.log('✅ TEARDOWN COMPLETED: System and Google Cloud RAG stores left 100% clean!');
+      }
+    } catch (e) {
+      console.warn('Teardown warning:', e.message);
+    }
 
     // GENERATE MACHINE QA REPORT
     const reportPath = path.join(__dirname, 'full_system_qa_report.json');

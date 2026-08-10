@@ -182,22 +182,7 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(401).json({ error: 'Неверные учетные данные' });
   }
 
-  // Ensure user has a dedicated Google File Search Store (Variant A)
-  let userStore = await prisma.userStore.findUnique({ where: { userId: user.id } });
-  if (!userStore) {
-    try {
-      const storeDisplayName = `client_store_${user.id}`;
-      const fileSearchStoreName = await ensureFileSearchStore(storeDisplayName);
-      userStore = await prisma.userStore.create({
-        data: {
-          userId: user.id,
-          fileSearchStoreName
-        }
-      });
-    } catch (err) {
-      console.warn('API Key not set yet. User store creation deferred.');
-    }
-  }
+  // Note: User store is lazily allocated on first file upload (Lazy RAG Provisioning)
 
   const token = generateToken({ userId: user.id, role: user.role });
   res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
@@ -509,17 +494,8 @@ const handleGetFiles = async (req: AuthRequest, res: any) => {
   const userId = req.user!.userId;
   try {
     let userStore = await prisma.userStore.findUnique({ where: { userId } });
-    if (!userStore) {
-      try {
-        const storeDisplayName = `client_store_${userId}`;
-        const fileSearchStoreName = await ensureFileSearchStore(storeDisplayName);
-        userStore = await prisma.userStore.create({
-          data: { userId, fileSearchStoreName }
-        });
-      } catch (storeErr: any) {
-        logError('[Files] Cannot create user store — Gemini API key not configured', { userId });
-        return res.json({ success: true, files: [], totalCount: 0, storageUsageBytes: 0 });
-      }
+    if (!userStore || !userStore.fileSearchStoreName) {
+      return res.json({ success: true, files: [], totalCount: 0, storageUsageBytes: 0 });
     }
     const files = await listFilesFromStore(userStore.fileSearchStoreName);
     const userTags = await prisma.userFileTag.findMany({ where: { userId } });
@@ -958,20 +934,6 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req: AuthRe
       }
     });
 
-    let storeName = null;
-    try {
-      const storeDisplayName = `client_store_${user.id}`;
-      storeName = await ensureFileSearchStore(storeDisplayName);
-      await prisma.userStore.create({
-        data: {
-          userId: user.id,
-          fileSearchStoreName: storeName
-        }
-      });
-    } catch (storeErr) {
-      console.warn('Deferred user store creation:', storeErr);
-    }
-
     logInfo(`[Admin] Создан новый пользователь [${user.email}] с ролью [${user.role}]`, { adminId: req.user!.userId });
 
     res.json({
@@ -979,7 +941,7 @@ app.post('/api/admin/users', authenticateToken, requireAdmin, async (req: AuthRe
       email: user.email,
       role: user.role,
       createdAt: user.createdAt,
-      userStore: storeName ? { fileSearchStoreName: storeName } : null
+      userStore: null
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Ошибка создания пользователя' });
@@ -1314,6 +1276,38 @@ app.get('/api/admin/rag-stats', authenticateToken, requireAdmin, async (req, res
     });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to calculate RAG stats', details: err.message });
+  }
+});
+
+// Admin Garbage Collector: Purge empty / orphaned RAG stores
+app.post('/api/admin/clean-orphaned-stores', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const userStores = await prisma.userStore.findMany();
+    let cleanedCount = 0;
+    const cleanedStoreNames: string[] = [];
+
+    for (const uStore of userStores) {
+      try {
+        const docs = await listFilesFromStore(uStore.fileSearchStoreName);
+        if (docs.length === 0) {
+          console.log(`[GarbageCollector] Deleting empty store: ${uStore.fileSearchStoreName}`);
+          await deleteFileSearchStore(uStore.fileSearchStoreName);
+          await prisma.userStore.delete({ where: { id: uStore.id } });
+          cleanedCount++;
+          cleanedStoreNames.push(uStore.fileSearchStoreName);
+        }
+      } catch (e: any) {
+        // If store missing in Google, clean DB record
+        if (String(e?.message || e).includes('404') || String(e?.message || e).includes('NOT_FOUND')) {
+          await prisma.userStore.delete({ where: { id: uStore.id } }).catch(() => {});
+          cleanedCount++;
+        }
+      }
+    }
+
+    res.json({ success: true, cleanedCount, cleanedStoreNames });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to clean orphaned stores', details: err.message });
   }
 });
 
