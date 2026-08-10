@@ -1290,6 +1290,7 @@ app.post('/api/admin/clean-orphaned-stores', authenticateToken, requireAdmin, as
 
     for (const uStore of userStores) {
       try {
+        invalidateStoreCache(uStore.fileSearchStoreName);
         const userTags = await prisma.userFileTag.findMany({ where: { userId: uStore.userId } });
         const docs = await listFilesFromStore(uStore.fileSearchStoreName);
         if (docs.length === 0 || userTags.length === 0) {
