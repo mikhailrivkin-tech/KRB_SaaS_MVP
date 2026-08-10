@@ -158,12 +158,13 @@ export async function listFilesFromStore(storeName: string) {
 
 // 4. Delete document from Google File Search Store
 export async function deleteFileFromStore(documentName: string) {
-  const apiKey = await getActiveGeminiApiKey();
-  const url = `https://generativelanguage.googleapis.com/v1beta/${documentName}?force=true&key=${apiKey}`;
-  const response = await fetch(url, { method: 'DELETE' });
-  if (!response.ok && response.status !== 404) {
-    const errorText = await response.text();
-    throw new Error(`Google API error (${response.status}): ${errorText}`);
+  const ai = await getGeminiClient();
+  try {
+    await (ai as any).fileSearchStores.documents.delete({ name: documentName });
+  } catch (error: any) {
+    if (!String(error?.message || error).includes('404') && !String(error?.message || error).includes('NOT_FOUND')) {
+      throw error;
+    }
   }
 }
 
