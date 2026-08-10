@@ -18,7 +18,13 @@ export function encryptApiKey(text: string): { encryptedKey: string; iv: string 
 }
 
 export function decryptApiKey(encryptedData: string, ivHex: string): string {
+  if (!encryptedData || !ivHex) {
+    throw new Error('Invalid encrypted key or IV');
+  }
   const [encrypted, authTag] = encryptedData.split(':');
+  if (!encrypted || !authTag) {
+    throw new Error('Invalid encrypted format');
+  }
   const decipher = crypto.createDecipheriv(
     ALGORITHM,
     Buffer.from(SECRET_KEY.slice(0, 32)),
