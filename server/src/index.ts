@@ -1333,23 +1333,7 @@ async function ensureDefaultUsers() {
       create: { email: 'client@krb.ai', passwordHash: clientPasswordHash, role: 'CLIENT' }
     });
 
-    const existingBot = await prisma.bot.findFirst();
-    if (!existingBot) {
-      try {
-        const storeName = await ensureFileSearchStore(`bot_store_${Date.now()}`);
-        await prisma.bot.create({
-          data: {
-            name: 'Маркетолог',
-            description: 'Эксперт по стратегическому маркетингу и анализу ниши',
-            systemInstruction: 'Вы — эксперт-маркетолог компании KRB.',
-            fileSearchStoreName: storeName
-          }
-        });
-      } catch (botErr) {
-        console.warn('Could not create default bot Store:', botErr);
-      }
-    }
-    console.log('✅ Default users & bot guaranteed in DB');
+    console.log('✅ Default users guaranteed in DB');
   } catch (err) {
     console.error('Failed to ensure default users:', err);
   }
