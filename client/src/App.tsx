@@ -118,7 +118,7 @@ function PerplexityMarkdownRenderer({ content }: { content: string }) {
     if (trimmed.startsWith('⚠️')) {
       flushList();
       elements.push(
-        <div key={idx} className="my-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 font-sans-claude text-xs flex items-center gap-2 font-medium shadow-sm">
+        <div key={idx} className="mt-4 mb-2 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-950 dark:text-amber-200 font-sans-claude text-xs flex items-center gap-2.5 font-semibold shadow-sm">
           <span>{parseInline(trimmed)}</span>
         </div>
       );
