@@ -632,6 +632,8 @@ app.delete('/api/rag/files/:fileName(*)', authenticateToken, async (req: AuthReq
   try {
     let userStore = await prisma.userStore.findUnique({ where: { userId } });
     if (!userStore) {
+      return res.status(404).json({ error: 'Хранилище не найдено' });
+    }
     let targetDocName = fileName;
     if (!targetDocName.includes('/')) {
       targetDocName = `${userStore.fileSearchStoreName}/documents/${fileName}`;
