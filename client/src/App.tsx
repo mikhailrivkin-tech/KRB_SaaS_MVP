@@ -114,6 +114,17 @@ function PerplexityMarkdownRenderer({ content }: { content: string }) {
   lines.forEach((line, idx) => {
     const trimmed = line.trim();
 
+    // Disclaimer Notice Banner (e.g. ⚠️ В Библиотеке бизнеса KRB...)
+    if (trimmed.startsWith('⚠️')) {
+      flushList();
+      elements.push(
+        <div key={idx} className="my-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 font-sans-claude text-xs flex items-center gap-2 font-medium shadow-sm">
+          <span>{parseInline(trimmed)}</span>
+        </div>
+      );
+      return;
+    }
+
     // Horizontal Rule
     if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
       flushList();
