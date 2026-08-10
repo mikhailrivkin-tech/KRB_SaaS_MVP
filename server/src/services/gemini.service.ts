@@ -161,7 +161,7 @@ export async function deleteFileFromStore(documentName: string) {
   const apiKey = await getActiveGeminiApiKey();
   const url = `https://generativelanguage.googleapis.com/v1beta/${documentName}?force=true&key=${apiKey}`;
   const response = await fetch(url, { method: 'DELETE' });
-  if (!response.ok) {
+  if (!response.ok && response.status !== 404) {
     const errorText = await response.text();
     throw new Error(`Google API error (${response.status}): ${errorText}`);
   }

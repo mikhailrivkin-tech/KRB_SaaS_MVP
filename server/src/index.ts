@@ -1290,8 +1290,9 @@ app.post('/api/admin/clean-orphaned-stores', authenticateToken, requireAdmin, as
 
     for (const uStore of userStores) {
       try {
+        const userTags = await prisma.userFileTag.findMany({ where: { userId: uStore.userId } });
         const docs = await listFilesFromStore(uStore.fileSearchStoreName);
-        if (docs.length === 0) {
+        if (docs.length === 0 || userTags.length === 0) {
           console.log(`[GarbageCollector] Deleting empty store: ${uStore.fileSearchStoreName}`);
           await deleteFileSearchStore(uStore.fileSearchStoreName);
           await prisma.userStore.delete({ where: { id: uStore.id } });
