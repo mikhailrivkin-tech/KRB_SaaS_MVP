@@ -224,9 +224,6 @@ export async function generateRAGAnswer(params: {
         fileSearchStoreNames: storeNames
       }
     });
-  } else {
-    // Enable live Google Web Search Grounding when RAG files are absent
-    tools.push({ googleSearch: {} });
   }
 
   // Build Dual-RAG Instruction Hierarchy based on active stores
